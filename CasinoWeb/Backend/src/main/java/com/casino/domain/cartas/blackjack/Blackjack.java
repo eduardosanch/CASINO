@@ -300,6 +300,7 @@ public class Blackjack extends JuegoConCartas {
         estado.put("resultado", resultado);
         estado.put("ultimaAccion", ultimaAccion);
         estado.put("juegoTerminado", juegoTerminado);
+        estado.put("saldo", getSaldo()); // Incluir el saldo actual del juego
 
         estado.put("cartasJugador", manoJugador.getCartasParaUI());
         estado.put("puntajeJugador", manoJugador.getPuntaje());

@@ -4,6 +4,7 @@ import com.casino.domain.juego.Juego;
 import com.casino.domain.juego.EstadoJuego;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
 @Service
@@ -11,7 +12,7 @@ public class JuegoService {
 
     private final GameSessionStore store = new GameSessionStore();
 
-    public Map<String, Object> iniciarJuego(String jugadorId, String tipoJuego, Double saldoInicial) throws Exception {
+    public Map<String, Object> iniciarJuego(String jugadorId, String tipoJuego, BigDecimal saldoInicial, BigDecimal apuesta) throws Exception {
         Juego juegoExistente = store.getJuego(jugadorId, tipoJuego);
         
         if (juegoExistente != null) {
@@ -24,9 +25,12 @@ public class JuegoService {
             }
         }
 
-        Juego juego = JuegoFactory.crearJuego(tipoJuego, jugadorId, saldoInicial);
+        Juego juego = JuegoFactory.crearJuego(tipoJuego, jugadorId, saldoInicial.doubleValue());
         store.putJuego(jugadorId, tipoJuego, juego);
 
+        // Establecer la apuesta antes de iniciar la partida
+        juego.apostar(apuesta.doubleValue());
+        
         // Inicia la partida
         juego.iniciarPartida();
 

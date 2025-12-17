@@ -1,44 +1,116 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import BlackjackPage from "./pages/BlackjackPage";
+import LoginPage from "./pages/LoginPage";
+import Header from "./components/Header";
+import AgregarFondosModal from "./components/AgregarFondosModal";
+import { obtenerDatosUsuario, actualizarSaldoUsuario } from "./api/casinoApi";
 
 function App() {
     const [paginaActual, setPaginaActual] = useState("menu");
+    const [usuarioActual, setUsuarioActual] = useState(null);
+    const [mostrarModalFondos, setMostrarModalFondos] = useState(false);
+
+    // Recuperar usuario del localStorage al montar
+    useEffect(() => {
+        const usuarioGuardado = localStorage.getItem("usuario");
+        if (usuarioGuardado) {
+            try {
+                setUsuarioActual(JSON.parse(usuarioGuardado));
+            } catch (e) {
+                console.error("Error al recuperar usuario:", e);
+            }
+        }
+    }, []);
+
+    const handleLoginSuccess = (usuario) => {
+        console.log("Login exitoso, usuario:", usuario);
+        setUsuarioActual(usuario);
+        localStorage.setItem("usuario", JSON.stringify(usuario));
+        setPaginaActual("menu");
+    };
+
+    const handleLogout = () => {
+        setUsuarioActual(null);
+        localStorage.removeItem("usuario");
+        setPaginaActual("menu");
+    };
+
+    // Refrescar datos del usuario
+    const refrescarUsuario = async () => {
+        if (usuarioActual?.idUsuario) {
+            try {
+                const usuarioActualizado = await obtenerDatosUsuario(usuarioActual.idUsuario);
+                console.log("Usuario actualizado:", usuarioActualizado);
+                setUsuarioActual(usuarioActualizado);
+                localStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
+            } catch (e) {
+                console.error("Error al refrescar usuario:", e);
+            }
+        }
+    };
+
+    const handleAgregarFondos = async (monto) => {
+        try {
+            const nuevosSaldos = (usuarioActual?.fondos || 0) + monto;
+            
+            // Actualizar en la BD
+            const usuarioActualizado = await actualizarSaldoUsuario(usuarioActual.idUsuario, nuevosSaldos);
+            
+            // Actualizar estado local
+            setUsuarioActual(usuarioActualizado);
+            localStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
+            setMostrarModalFondos(false);
+            alert(`✓ Se agregaron $${monto.toFixed(2)} a tu cuenta. Nuevo saldo: $${nuevosSaldos.toFixed(2)}`);
+        } catch (error) {
+            console.error("Error al agregar fondos:", error);
+            alert("Error al agregar fondos. Por favor intenta de nuevo.");
+        }
+    };
 
     const renderPagina = () => {
         switch (paginaActual) {
             case "blackjack":
-                return <BlackjackPage onVolverMenu={() => setPaginaActual("menu")} />;
+                return <BlackjackPage 
+                    usuario={usuarioActual}
+                    onVolverMenu={() => {
+                        refrescarUsuario(); // Refrescar saldo al volver del juego
+                        setPaginaActual("menu");
+                    }}
+                />;
             default:
-                return <MenuPrincipal onSeleccionar={setPaginaActual} />;
+                return <MenuPrincipal 
+                    usuario={usuarioActual}
+                    onSeleccionar={setPaginaActual}
+                    onAgregarFondos={() => setMostrarModalFondos(true)}
+                />;
         }
     };
 
+    // Si no hay usuario, mostrar login
+    if (!usuarioActual) {
+        return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    }
+
     return (
         <div style={{ minHeight: "100vh", background: "#1a1a2e" }}>
-            <header style={{ 
-                background: "linear-gradient(90deg, #0d5c36 0%, #1a472a 100%)", 
-                padding: "20px",
-                textAlign: "center",
-                boxShadow: "0 4px 6px rgba(0,0,0,0.3)"
-            }}>
-                <h1 style={{ 
-                    color: "#d4af37", 
-                    margin: 0,
-                    fontSize: "2.5rem",
-                    textShadow: "2px 2px 4px rgba(0,0,0,0.5)"
-                }}>
-                    🎰 Casino ROA 🎰
-                </h1>
-            </header>
+            <Header usuario={usuarioActual} onLogout={handleLogout} />
 
             <main style={{ padding: "20px", maxWidth: "1200px", margin: "0 auto" }}>
                 {renderPagina()}
             </main>
+
+            {mostrarModalFondos && (
+                <AgregarFondosModal
+                    usuario={usuarioActual}
+                    onAgregarFondos={handleAgregarFondos}
+                    onCerrar={() => setMostrarModalFondos(false)}
+                />
+            )}
         </div>
     );
 }
 
-function MenuPrincipal({ onSeleccionar }) {
+function MenuPrincipal({ usuario, onSeleccionar, onAgregarFondos }) {
     const juegos = [
         { id: "blackjack", nombre: "♠ Blackjack ♥", descripcion: "Intenta llegar a 21 sin pasarte", color: "#1a472a" },
         { id: "ruleta", nombre: "🎡 Ruleta", descripcion: "Próximamente...", color: "#8b0000", disabled: true },
@@ -47,6 +119,66 @@ function MenuPrincipal({ onSeleccionar }) {
 
     return (
         <div style={{ textAlign: "center", paddingTop: "40px" }}>
+            {/* Sección de Fondos */}
+            <div style={{
+                background: "rgba(255, 255, 255, 0.05)",
+                padding: "20px",
+                borderRadius: "10px",
+                marginBottom: "40px",
+                border: "2px solid #d4af37",
+                maxWidth: "600px",
+                margin: "0 auto 40px"
+            }}>
+                <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "20px"
+                }}>
+                    <div style={{ textAlign: "left" }}>
+                        <p style={{ 
+                            color: "#aaa", 
+                            margin: "0 0 8px 0",
+                            fontSize: "14px"
+                        }}>
+                            Tu saldo actual:
+                        </p>
+                        <h3 style={{ 
+                            color: "#d4af37", 
+                            margin: 0,
+                            fontSize: "32px"
+                        }}>
+                            ${usuario?.fondos?.toFixed(2) || "0.00"}
+                        </h3>
+                    </div>
+                    <button
+                        onClick={onAgregarFondos}
+                        style={{
+                            padding: "12px 24px",
+                            fontSize: "16px",
+                            background: "#2e7d32",
+                            color: "#d4af37",
+                            border: "2px solid #d4af37",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                            transition: "all 0.3s ease",
+                            whiteSpace: "nowrap"
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#3a9a3f";
+                            e.currentTarget.style.transform = "scale(1.05)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "#2e7d32";
+                            e.currentTarget.style.transform = "scale(1)";
+                        }}
+                    >
+                        💰 Agregar Fondos
+                    </button>
+                </div>
+            </div>
+
             <h2 style={{ color: "#fff", marginBottom: "40px" }}>Selecciona un Juego</h2>
             
             <div style={{ 
