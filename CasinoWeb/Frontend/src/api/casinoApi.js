@@ -99,10 +99,10 @@ export const obtenerEstado = async (jugadorId, tipoJuego) => {
 };
 
 // Finalizar juego (para poder iniciar uno nuevo)
-export const finalizarJuego = async (jugadorId, tipoJuego, ganancia = 0) => {
-    console.log("API: finalizarJuego", jugadorId, tipoJuego, ganancia);
+export const finalizarJuego = async (jugadorId, tipoJuego) => {
+    console.log("API: finalizarJuego", jugadorId, tipoJuego);
     const res = await fetch(
-        `${API_URL}/finalizar?jugadorId=${jugadorId}&tipoJuego=${tipoJuego}&ganancia=${ganancia}`,
+        `${API_URL}/finalizar?jugadorId=${jugadorId}&tipoJuego=${tipoJuego}`,
         { method: "POST" }
     );
     if (res.ok) {

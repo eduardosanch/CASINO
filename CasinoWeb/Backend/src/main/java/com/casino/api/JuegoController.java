@@ -64,15 +64,19 @@ public class JuegoController {
     @PostMapping("/finalizar")
     public ResponseEntity<?> finalizar(
             @RequestParam String jugadorId,
-            @RequestParam String tipoJuego,
-            @RequestParam(required = false) Double ganancia) {
+            @RequestParam String tipoJuego) {
         try {
+            // Obtener el saldo final del juego antes de finalizarlo
+            Map<String, Object> estadoFinal = juegoService.obtenerEstadoJuego(jugadorId, tipoJuego);
+            Double saldoFinal = (Double) estadoFinal.get("saldo");
+            
+            // Finalizar el juego (eliminarlo de memoria)
             juegoService.finalizarJuego(jugadorId, tipoJuego);
             
-            // Si hay ganancia (incluyendo 0 o negativa), actualizarla
-            if (ganancia != null) {
+            // Actualizar el saldo en la BD con el saldo final del juego
+            if (saldoFinal != null) {
                 Integer usuarioId = extractUsuarioIdFromJugadorId(jugadorId);
-                usuarioService.agregarGanancia(usuarioId, new java.math.BigDecimal(ganancia));
+                usuarioService.actualizarFondos(usuarioId, new java.math.BigDecimal(saldoFinal));
             }
             
             return ResponseEntity.ok(Map.of("status", "OK"));

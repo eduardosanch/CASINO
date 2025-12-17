@@ -37,17 +37,12 @@ export function useCasinoGame(idUsuario, jugadorId, tipoJuego) {
         try {
             const data = await enviarJugada(jugadorId, tipoJuego, accion);
             
-            // Si el juego terminó, finalizar con la ganancia
+            // Si el juego terminó, finalizarlo
             if (data.juegoTerminado) {
-                console.log("Hook: juego terminado, finalizando con ganancia...");
-                // Calcular la ganancia: saldo final - saldo inicial del juego
-                const saldoFinal = data.saldo || 0;
-                const ganancia = saldoFinal - saldoInicialDelJuego;
-                
-                console.log("Hook: ganancia calculada:", ganancia, "saldo inicial:", saldoInicialDelJuego, "saldo final:", saldoFinal);
-                
-                // Finalizar el juego con la ganancia
-                await finalizarJuego(jugadorId, tipoJuego, ganancia);
+                console.log("Hook: juego terminado, finalizando...");
+                // El backend se encargará de actualizar el saldo en la BD
+                // usando el saldo final del juego
+                await finalizarJuego(jugadorId, tipoJuego);
             }
             
             setEstado(data);
@@ -67,14 +62,11 @@ export function useCasinoGame(idUsuario, jugadorId, tipoJuego) {
 
     const salir = async () => {
         try {
-            // Si hay un juego en progreso, obtener su saldo final
-            let ganancia = 0;
+            // Si hay un juego en progreso, finalizarlo
             if (estado && estado.juegoTerminado) {
-                const saldoFinal = estado.saldo || 0;
-                ganancia = saldoFinal - saldoInicialDelJuego;
-                console.log("Hook: salir - enviando ganancia:", ganancia);
+                console.log("Hook: salir - finalizando juego");
+                await finalizarJuego(jugadorId, tipoJuego);
             }
-            await finalizarJuego(jugadorId, tipoJuego, ganancia);
         } catch (e) {
             console.log("Hook: error al salir (ignorado)", e);
         }
